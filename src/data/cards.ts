@@ -47,7 +47,7 @@ export const CARDS: CardDef[] = [
     minDifficulty: 2,
     requiresLeds: 3,
     target: 'continuous',
-    conflictsWith: ['onoff-pwm', 'two-leds', 'blink'],
+    conflictsWith: ['onoff-pwm', 'two-leds', 'blink', 'logic', 'edge-toggle', 'calibration'],
     rules: [{ kind: 'levelIndicator', count: 3 }],
     tip: 'if / else if / else 로 세 구간을 나누고, 구간마다 LED 하나만 켜세요.',
   },
@@ -59,7 +59,7 @@ export const CARDS: CardDef[] = [
     minDifficulty: 2,
     requiresPwmLed: true,
     target: 'continuous',
-    conflictsWith: ['three-level', 'logic', 'blink', 'edge-toggle'],
+    conflictsWith: ['three-level', 'logic', 'blink', 'edge-toggle', 'calibration'],
     rules: [
       { kind: 'codeCalls', fn: 'analogWrite', where: 'loop' },
       { kind: 'onOffAndPwm' },
@@ -73,7 +73,7 @@ export const CARDS: CardDef[] = [
     description: '{T}의 값이 바뀌는 순간(예: 버튼을 누르는 순간)에만 LED 상태를 반대로 바꾸세요.',
     minDifficulty: 3,
     target: 'digital',
-    conflictsWith: ['onoff-pwm', 'blink'],
+    conflictsWith: ['onoff-pwm', 'blink', 'logic', 'three-level', 'two-leds'],
     rules: [{ kind: 'edgeToggle' }],
     tip: '이전 값을 저장하는 변수(lastValue)를 두고, 지금 값이 다르고 감지 상태일 때만 ledState = !ledState.',
   },
@@ -84,7 +84,7 @@ export const CARDS: CardDef[] = [
     description: '시작할 때(setup) {T} 값을 읽어서 그 값을 기준으로 임계값을 자동으로 정하세요.',
     minDifficulty: 3,
     target: 'continuous',
-    conflictsWith: [],
+    conflictsWith: ['three-level', 'onoff-pwm'],
     rules: [
       { kind: 'calibration' },
     ],
@@ -97,7 +97,7 @@ export const CARDS: CardDef[] = [
     description: '두 센서 조건을 논리 연산으로 묶어 LED 를 제어하세요.',
     minDifficulty: 1,
     target: 'any',
-    conflictsWith: ['onoff-pwm', 'two-leds', 'three-level'],
+    conflictsWith: ['onoff-pwm', 'two-leds', 'three-level', 'edge-toggle'],
     rules: [],
     variants: [
       {
@@ -122,7 +122,7 @@ export const CARDS: CardDef[] = [
     description: '조건을 만족하면 LED 가 깜빡이고, 아니면 꺼져 있게 하세요.',
     minDifficulty: 2,
     target: 'any',
-    conflictsWith: ['three-level', 'onoff-pwm', 'edge-toggle'],
+    conflictsWith: ['three-level', 'onoff-pwm', 'edge-toggle', 'two-leds'],
     rules: [{ kind: 'blinkWhenActive' }],
     tip: '조건이 참일 때 HIGH → delay(200) → LOW → delay(200) 를 실행하면 깜빡입니다.',
   },
@@ -134,7 +134,7 @@ export const CARDS: CardDef[] = [
     minDifficulty: 2,
     requiresLeds: 2,
     target: 'any',
-    conflictsWith: ['logic', 'three-level'],
+    conflictsWith: ['logic', 'three-level', 'blink', 'edge-toggle'],
     rules: [],
     variants: [
       {
