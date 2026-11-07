@@ -131,8 +131,17 @@ const CircuitEditor = forwardRef<CircuitEditorHandle, Props>(function CircuitEdi
   const clickPoint = (pid: string) => {
     if (readOnly) return
     if (pid.startsWith('H:') && occupied.has(pid) && !wireStart) {
-      // 부품 다리 / 선이 꽂힌 구멍에서도 같은 줄 다른 구멍으로 선을 뺄 수 있게 안내
-      flash('이미 무언가 꽂힌 구멍이에요. 같은 줄의 빈 구멍을 클릭하세요.')
+      // 이미 선이 꽂혀 있는 구멍을 다시 터치하면: 그 선을 떼어내고 바로 이어서 새로 연결할 수 있게 한다
+      const wire = circuit.wires.find((w) => w.a === pid || w.b === pid)
+      if (wire) {
+        change({ ...circuit, wires: circuit.wires.filter((w) => w.id !== wire.id) })
+        setSel(null)
+        setWireStart(pid)
+        flash('기존 선을 뗐어요. 다른 구멍을 터치해 다시 연결하세요. (Esc: 취소)')
+        return
+      }
+      // 부품 다리가 꽂힌 구멍은 같은 줄의 다른 빈 구멍으로 선을 뺄 수 있게 안내
+      flash('이미 부품 다리가 꽂힌 구멍이에요. 같은 줄의 빈 구멍을 터치하세요.')
       return
     }
     if (!wireStart) { setWireStart(pid); setSel(null); return }
