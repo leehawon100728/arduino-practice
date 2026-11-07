@@ -1,6 +1,6 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import type { Circuit, CircuitPartKind, PlacedPart, Rot } from '../../sim/parts'
-import { Netlist, PART_DEFS, canPlace, canPlaceLeg, isLed, legHoles, rotate } from '../../sim/parts'
+import { Netlist, PART_DEFS, canPlace, canPlaceLeg, isLed, isResistor, legHoles, rotate } from '../../sim/parts'
 import {
   ARDUINO_PINS, BB, BB_COLS, PITCH, RAIL_ROWS, BOT_ROWS, TOP_ROWS, ROW_LETTER, RAIL_SIGN, UNO, VIEW,
   holeId, holeNode, holeXY, isHole, nearestHole, pointName, pointNode, pointXY,
@@ -29,8 +29,9 @@ type Sel = { type: 'part' | 'wire'; id: string } | null
 interface Drag { partId: string | null; kind: CircuitPartKind; rot: Rot; col: number; y: number; offCol: number; offY: number; moved: boolean; startX: number; startY: number }
 interface LegDrag { partId: string; legId: string; x: number; y: number; defaultCol: number; defaultY: number }
 
-/** 다리를 구부려서 꽂을 수 있는 최대 거리 (피치 단위, "2~3칸") */
-const MAX_LEG_BEND = 3.2
+/** 다리를 구부려서 꽂을 수 있는 최대 거리 (피치 단위). LED는 "2~3칸", 저항은 실제처럼 리드선을 길게 늘여 어디든 꽂을 수 있게 제한을 두지 않는다 */
+const MAX_LEG_BEND_LED = 3.2
+const maxLegBend = (kind: CircuitPartKind) => (isResistor(kind) ? Infinity : MAX_LEG_BEND_LED)
 
 /** 부품의 각 다리를 (로컬 픽셀 좌표)로 변환 — 구부린 다리는 본체에서 멀어진 위치로 */
 function legPosFor(p: PlacedPart) {
@@ -256,15 +257,15 @@ const CircuitEditor = forwardRef<CircuitEditorHandle, Props>(function CircuitEdi
       if (!d) return
       const hole = nearestHole(d.x, d.y, PITCH * 0.7)
       if (!hole) { flash('구멍 위에서 손을 놓아야 다리를 꽂을 수 있어요.'); return }
-      if (Math.hypot(hole.col - d.defaultCol, hole.y - d.defaultY) > MAX_LEG_BEND) {
+      const part0 = circuit.parts.find((x) => x.id === d.partId)
+      if (!part0) return
+      if (Math.hypot(hole.col - d.defaultCol, hole.y - d.defaultY) > maxLegBend(part0.kind)) {
         flash('다리를 그렇게 멀리 구부릴 수는 없어요. 원래 자리에서 2~3칸 안쪽으로만 옮기세요.')
         return
       }
       if (!canPlaceLeg(circuit, d.partId, d.legId, hole.col, hole.y)) { flash('그 구멍엔 이미 다른 다리나 선이 꽂혀 있어요.'); return }
-      const part = circuit.parts.find((x) => x.id === d.partId)
-      if (!part) return
       const isDefault = hole.col === d.defaultCol && hole.y === d.defaultY
-      const bend = { ...part.bend }
+      const bend = { ...part0.bend }
       if (isDefault) delete bend[d.legId]
       else bend[d.legId] = { col: hole.col, y: hole.y }
       change({ ...circuit, parts: circuit.parts.map((x) => (x.id === d.partId ? { ...x, bend } : x)) })
@@ -454,15 +455,15 @@ const CircuitEditor = forwardRef<CircuitEditorHandle, Props>(function CircuitEdi
             )
           })}
 
-          {/* LED 다리 끝 손잡이 — 끌어서 주변 2~3칸으로 구부려 꽂을 수 있다 */}
-          {!readOnly && circuit.parts.filter((p) => isLed(p.kind) && !(drag?.partId === p.id && drag.moved)).map((p) => (
+          {/* LED·저항 다리 끝 손잡이 — 끌어서 다른 구멍에 구부려 꽂을 수 있다 (LED는 주변 2~3칸, 저항은 리드선처럼 자유롭게) */}
+          {!readOnly && circuit.parts.filter((p) => (isLed(p.kind) || isResistor(p.kind)) && !(drag?.partId === p.id && drag.moved)).map((p) => (
             <g key={`legs-${p.id}`}>
               {legHoles(p).map((h) => {
                 const xy = holeXY(h.col, h.y)
                 return (
                   <circle key={h.leg.id} cx={xy.x} cy={xy.y} r={9} fill="transparent" className="cursor-grab"
                     onPointerDown={(e) => startLegDrag(e, p, h.leg.id)}>
-                    <title>다리 구부리기: 끌어서 주변 2~3칸 안의 빈 구멍에 꽂으세요</title>
+                    <title>{isResistor(p.kind) ? '다리(리드선) 구부리기: 끌어서 원하는 구멍에 자유롭게 꽂으세요' : '다리 구부리기: 끌어서 주변 2~3칸 안의 빈 구멍에 꽂으세요'}</title>
                   </circle>
                 )
               })}
@@ -496,8 +497,9 @@ const CircuitEditor = forwardRef<CircuitEditorHandle, Props>(function CircuitEdi
 
           {/* 다리 구부리기 미리보기 */}
           {legDrag && (() => {
+            const draggedPart = circuit.parts.find((x) => x.id === legDrag.partId)
             const hole = nearestHole(legDrag.x, legDrag.y, PITCH * 0.7)
-            const okDist = !!hole && Math.hypot(hole.col - legDrag.defaultCol, hole.y - legDrag.defaultY) <= MAX_LEG_BEND
+            const okDist = !!hole && Math.hypot(hole.col - legDrag.defaultCol, hole.y - legDrag.defaultY) <= maxLegBend(draggedPart?.kind ?? 'led-red')
             const valid = !!hole && okDist && canPlaceLeg(circuit, legDrag.partId, legDrag.legId, hole.col, hole.y)
             const target = hole ? holeXY(hole.col, hole.y) : { x: legDrag.x, y: legDrag.y }
             return (
@@ -527,7 +529,13 @@ const CircuitEditor = forwardRef<CircuitEditorHandle, Props>(function CircuitEdi
             </span>
           )}
           {wireStart && <span className="rounded bg-orange-600 px-2 py-0.5 text-white">선 연결 중: {pointName(wireStart)} → 끝점을 클릭 (Esc 취소)</span>}
-          {legDrag && <span className="rounded bg-orange-600 px-2 py-0.5 text-white">다리 구부리는 중: 주변 2~3칸 안의 빈 구멍 위에서 손을 떼세요</span>}
+          {legDrag && (
+            <span className="rounded bg-orange-600 px-2 py-0.5 text-white">
+              {isResistor(circuit.parts.find((x) => x.id === legDrag.partId)?.kind ?? 'led-red')
+                ? '다리(리드선) 구부리는 중: 원하는 빈 구멍 위에서 손을 떼세요'
+                : '다리 구부리는 중: 주변 2~3칸 안의 빈 구멍 위에서 손을 떼세요'}
+            </span>
+          )}
           {msg && <span className="rounded bg-rose-600 px-2 py-0.5 text-white" role="status">{msg}</span>}
         </div>
       </div>

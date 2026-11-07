@@ -121,11 +121,14 @@ export default function PartGraphic({ kind, state = {}, legPos }: { kind: Circui
     case 'res-220':
     case 'res-10k': {
       // 실제 탄소피막 저항 색: 220Ω=빨빨갈, 10kΩ=갈검주 (국제 저항 색띠 규격)
+      // 몸통(색띠)은 제자리에 고정하고, 다리(리드선)만 구부려서 꽂은 위치까지 자유롭게 늘어난다
       const bands = kind === 'res-220' ? ['#d6281f', '#d6281f', '#5a3a1a'] : ['#5a3a1a', '#1a1a1a', '#e8740c']
+      const r1 = legXY(kind, 'r1', legPos)
+      const r2 = legXY(kind, 'r2', legPos)
       return (
         <g>
-          <line x1={0} y1={0} x2={0} y2={21} stroke="url(#leadGrad)" strokeWidth={2.4} />
-          <line x1={0} y1={59} x2={0} y2={80} stroke="url(#leadGrad)" strokeWidth={2.4} />
+          <path d={`M${r1.x} ${r1.y} L0 19`} fill="none" stroke="url(#leadGrad)" strokeWidth={2.4} />
+          <path d={`M0 61 L${r2.x} ${r2.y}`} fill="none" stroke="url(#leadGrad)" strokeWidth={2.4} />
           <rect x={-7} y={19} width={14} height={42} rx={6} fill="url(#resistorBodyGrad)" stroke="#7c5a32" strokeWidth={0.8} />
           <rect x={-3.5} y={19} width={3} height={42} fill="#fff" opacity={0.3} />
           {bands.map((c, i) => <rect key={i} x={-7} y={26 + i * 9} width={14} height={4.5} fill={c} />)}
