@@ -17,16 +17,18 @@ function LedIcon({ kind }: { kind: CircuitPartKind }) {
   )
 }
 
+// 세로(다리가 위아래로 꽂히는 방향)가 실제 기본 배치(rot=0)와 같다 — 트레이에서 돌리기 버튼을 누르면
+// 이 세로 모양이 가로로 눕혀지고, 그게 그대로 브레드보드에 가로로 꽂힌다
 function ResistorIcon({ kind }: { kind: CircuitPartKind }) {
   const bands = kind === 'res-220' ? ['#d6281f', '#d6281f', '#5a3a1a'] : ['#5a3a1a', '#1a1a1a', '#e8740c']
   return (
-    <svg viewBox="0 0 36 16" width={30} height={14} aria-hidden>
-      <line x1={0} y1={8} x2={9} y2={8} stroke="url(#leadGrad)" strokeWidth={2} />
-      <line x1={27} y1={8} x2={36} y2={8} stroke="url(#leadGrad)" strokeWidth={2} />
-      <rect x={9} y={2} width={18} height={12} rx={5} fill="url(#resistorBodyGrad)" stroke="#7c5a32" strokeWidth={0.7} />
-      <rect x={9} y={2} width={3} height={12} fill="#fff" opacity={0.3} />
-      {bands.map((c, i) => <rect key={i} x={13 + i * 4} y={2} width={2.4} height={12} fill={c} />)}
-      <rect x={24} y={2} width={2.4} height={12} fill="#c9972e" />
+    <svg viewBox="0 0 16 36" width={12} height={26} aria-hidden>
+      <line x1={8} y1={0} x2={8} y2={9} stroke="url(#leadGrad)" strokeWidth={2} />
+      <line x1={8} y1={27} x2={8} y2={36} stroke="url(#leadGrad)" strokeWidth={2} />
+      <rect x={2} y={9} width={12} height={18} rx={5} fill="url(#resistorBodyGrad)" stroke="#7c5a32" strokeWidth={0.7} />
+      <rect x={2} y={9} width={12} height={3} fill="#fff" opacity={0.3} />
+      {bands.map((c, i) => <rect key={i} x={2} y={13 + i * 4} width={12} height={2.4} fill={c} />)}
+      <rect x={2} y={24} width={12} height={2.4} fill="#c9972e" />
     </svg>
   )
 }
