@@ -1,8 +1,9 @@
 import type { RefObject } from 'react'
 import type { SensorId } from '../../types'
 import { getSensor, SENSOR_IDS } from '../../data/sensors'
-import { SENSOR_PART, type CircuitPartKind } from '../../sim/parts'
+import { SENSOR_PART, isLed, isResistor, type CircuitPartKind } from '../../sim/parts'
 import type { CircuitEditorHandle } from '../circuit/CircuitEditor'
+import PartIcon from '../circuit/PartIcon'
 
 const COMMON: { kind: CircuitPartKind; label: string; icon: string }[] = [
   { kind: 'led-red', label: 'LED 빨강', icon: '🔴' },
@@ -26,7 +27,9 @@ export default function PartsTray({ sensors, editor }: { sensors: SensorId[]; ed
       onClick={(e) => { if (e.detail === 0) editor.current?.autoPlace(kind) }}
       className={`card flex shrink-0 touch-none select-none items-center gap-2 px-2.5 py-1.5 text-left text-xs hover:border-brand-500 active:cursor-grabbing ${highlight ? 'border-brand-500 ring-1 ring-brand-500/40' : ''}`}
     >
-      <span aria-hidden className="text-base">{icon}</span>
+      <span aria-hidden className="flex w-5 shrink-0 items-center justify-center text-base">
+        {isLed(kind) || isResistor(kind) ? <PartIcon kind={kind} /> : icon}
+      </span>
       <span>{label}</span>
     </button>
   )

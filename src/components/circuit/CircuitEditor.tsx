@@ -1,9 +1,9 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import type { Circuit, CircuitPartKind, PlacedPart, Rot } from '../../sim/parts'
-import { Netlist, PART_DEFS, canPlace, isLed, legHoles } from '../../sim/parts'
+import { Netlist, PART_DEFS, canPlace, canPlaceLeg, isLed, legHoles, rotate } from '../../sim/parts'
 import {
   ARDUINO_PINS, BB, BB_COLS, PITCH, RAIL_ROWS, BOT_ROWS, TOP_ROWS, ROW_LETTER, RAIL_SIGN, UNO, VIEW,
-  holeId, holeNode, holeXY, isHole, pointName, pointNode, pointXY,
+  holeId, holeNode, holeXY, isHole, nearestHole, pointName, pointNode, pointXY,
 } from '../../sim/geometry'
 import { WIRE_COLORS } from '../../sim/modelCircuit'
 import type { BoardSnapshot } from '../../sim/board'
@@ -27,6 +27,21 @@ interface Props {
 
 type Sel = { type: 'part' | 'wire'; id: string } | null
 interface Drag { partId: string | null; kind: CircuitPartKind; rot: Rot; col: number; y: number; offCol: number; offY: number; moved: boolean; startX: number; startY: number }
+interface LegDrag { partId: string; legId: string; x: number; y: number; defaultCol: number; defaultY: number }
+
+/** 다리를 구부려서 꽂을 수 있는 최대 거리 (피치 단위, "2~3칸") */
+const MAX_LEG_BEND = 3.2
+
+/** 부품의 각 다리를 (로컬 픽셀 좌표)로 변환 — 구부린 다리는 본체에서 멀어진 위치로 */
+function legPosFor(p: PlacedPart) {
+  const inv = ((4 - p.rot) % 4) as Rot
+  const m: Record<string, { x: number; y: number }> = {}
+  for (const h of legHoles(p)) {
+    const [ldx, ldy] = rotate(h.col - p.col, h.y - p.y, inv)
+    m[h.leg.id] = { x: ldx * 20, y: ldy * 20 }
+  }
+  return m
+}
 
 const ALL_HOLES: { col: number; y: number }[] = []
 for (let c = 1; c <= BB_COLS; c++) for (const y of [...RAIL_ROWS, ...TOP_ROWS, ...BOT_ROWS]) ALL_HOLES.push({ col: c, y })
@@ -56,10 +71,13 @@ const CircuitEditor = forwardRef<CircuitEditorHandle, Props>(function CircuitEdi
   const [hover, setHover] = useState<string | null>(null)
   const [mouse, setMouse] = useState<{ x: number; y: number } | null>(null)
   const [drag, setDrag] = useState<Drag | null>(null)
+  const [legDrag, setLegDrag] = useState<LegDrag | null>(null)
   const [color, setColor] = useState('orange')
   const [msg, setMsg] = useState<string | null>(null)
   const dragRef = useRef<Drag | null>(null)
   dragRef.current = drag
+  const legDragRef = useRef<LegDrag | null>(null)
+  legDragRef.current = legDrag
   const partDown = useRef(false)
 
   const netlist = useMemo(() => new Netlist(circuit), [circuit])
@@ -123,7 +141,8 @@ const CircuitEditor = forwardRef<CircuitEditorHandle, Props>(function CircuitEdi
       return
     }
     if (d.partId) {
-      change({ ...circuit, parts: circuit.parts.map((p) => (p.id === d.partId ? { ...p, col: d.col, y: d.y } : p)) })
+      // 부품 전체를 옮기면 구부린 다리는 다시 곧게 편다
+      change({ ...circuit, parts: circuit.parts.map((p) => (p.id === d.partId ? { ...p, col: d.col, y: d.y, bend: undefined } : p)) })
       setSel({ type: 'part', id: d.partId })
     } else {
       const id = newId('p')
@@ -209,6 +228,58 @@ const CircuitEditor = forwardRef<CircuitEditorHandle, Props>(function CircuitEdi
     setDrag({ partId: part.id, kind: part.kind, rot: part.rot, col: part.col, y: part.y, offCol: col - part.col, offY: y - part.y, moved: false, startX: e.clientX, startY: e.clientY })
   }
 
+  // ── LED 다리 구부리기 (몸통은 그대로 두고 다리 끝만 주변 구멍으로 옮긴다) ──
+  const startLegDrag = (e: React.PointerEvent, part: PlacedPart, legId: string) => {
+    e.stopPropagation()
+    if (readOnly) return
+    const def = PART_DEFS[part.kind].legs.find((l) => l.id === legId)
+    const p = toSvg(e.clientX, e.clientY)
+    if (!def || !p) return
+    const [ddx, ddy] = rotate(def.dx, def.dy, part.rot)
+    setWireStart(null)
+    setSel({ type: 'part', id: part.id })
+    setLegDrag({ partId: part.id, legId, x: p.x, y: p.y, defaultCol: part.col + ddx, defaultY: part.y + ddy })
+  }
+
+  useEffect(() => {
+    if (!legDrag) return
+    const move = (e: PointerEvent) => {
+      const d = legDragRef.current
+      if (!d) return
+      const p = toSvg(e.clientX, e.clientY)
+      if (!p) return
+      setLegDrag({ ...d, x: p.x, y: p.y })
+    }
+    const up = () => {
+      const d = legDragRef.current
+      setLegDrag(null)
+      if (!d) return
+      const hole = nearestHole(d.x, d.y, PITCH * 0.7)
+      if (!hole) { flash('구멍 위에서 손을 놓아야 다리를 꽂을 수 있어요.'); return }
+      if (Math.hypot(hole.col - d.defaultCol, hole.y - d.defaultY) > MAX_LEG_BEND) {
+        flash('다리를 그렇게 멀리 구부릴 수는 없어요. 원래 자리에서 2~3칸 안쪽으로만 옮기세요.')
+        return
+      }
+      if (!canPlaceLeg(circuit, d.partId, d.legId, hole.col, hole.y)) { flash('그 구멍엔 이미 다른 다리나 선이 꽂혀 있어요.'); return }
+      const part = circuit.parts.find((x) => x.id === d.partId)
+      if (!part) return
+      const isDefault = hole.col === d.defaultCol && hole.y === d.defaultY
+      const bend = { ...part.bend }
+      if (isDefault) delete bend[d.legId]
+      else bend[d.legId] = { col: hole.col, y: hole.y }
+      change({ ...circuit, parts: circuit.parts.map((x) => (x.id === d.partId ? { ...x, bend } : x)) })
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+    window.addEventListener('pointercancel', up)
+    return () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+      window.removeEventListener('pointercancel', up)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [legDrag !== null, circuit])
+
   // ── 키보드 ──
   const removeSel = () => {
     if (!sel) return
@@ -222,8 +293,8 @@ const CircuitEditor = forwardRef<CircuitEditorHandle, Props>(function CircuitEdi
     if (!p) return
     for (let k = 1; k <= 3; k++) {
       const rot = ((p.rot + k) % 4) as Rot
-      if (canPlace(circuit, { ...p, rot }, p.id)) {
-        change({ ...circuit, parts: circuit.parts.map((x) => (x.id === p.id ? { ...x, rot } : x)) })
+      if (canPlace(circuit, { ...p, rot, bend: undefined }, p.id)) {
+        change({ ...circuit, parts: circuit.parts.map((x) => (x.id === p.id ? { ...x, rot, bend: undefined } : x)) })
         return
       }
     }
@@ -235,7 +306,7 @@ const CircuitEditor = forwardRef<CircuitEditorHandle, Props>(function CircuitEdi
     if (!p) return
     // 세로 이동은 다음 구멍 줄까지 건너뛴다
     for (let step = 1; step <= 4; step++) {
-      const cand = { ...p, col: p.col + dc * step, y: p.y + dy * step }
+      const cand = { ...p, col: p.col + dc * step, y: p.y + dy * step, bend: undefined }
       if (canPlace(circuit, cand, p.id)) {
         change({ ...circuit, parts: circuit.parts.map((x) => (x.id === p.id ? cand : x)) })
         return
@@ -262,7 +333,7 @@ const CircuitEditor = forwardRef<CircuitEditorHandle, Props>(function CircuitEdi
   }
   const onSvgPointerUp = (e: React.PointerEvent) => {
     if (partDown.current) { partDown.current = false; return }
-    if (drag) return
+    if (drag || legDrag) return
     const p = toSvg(e.clientX, e.clientY)
     if (!p) return
     const pid = pointAt(p.x, p.y)
@@ -313,9 +384,6 @@ const CircuitEditor = forwardRef<CircuitEditorHandle, Props>(function CircuitEdi
           onPointerLeave={() => { setHover(null); setMouse(null) }}
           onPointerUp={onSvgPointerUp}
         >
-          <defs>
-            <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4" /></filter>
-          </defs>
 
           {/* 아두이노 UNO */}
           <g>
@@ -381,10 +449,25 @@ const CircuitEditor = forwardRef<CircuitEditorHandle, Props>(function CircuitEdi
                 className={readOnly ? '' : p.kind === 'pushbutton' && running ? 'cursor-pointer' : 'cursor-grab'}
                 aria-label={PART_DEFS[p.kind].label}>
                 {selected && <PartBounds kind={p.kind} />}
-                <PartGraphic kind={p.kind} state={partState(p)} />
+                <PartGraphic kind={p.kind} state={partState(p)} legPos={legPosFor(p)} />
               </g>
             )
           })}
+
+          {/* LED 다리 끝 손잡이 — 끌어서 주변 2~3칸으로 구부려 꽂을 수 있다 */}
+          {!readOnly && circuit.parts.filter((p) => isLed(p.kind) && !(drag?.partId === p.id && drag.moved)).map((p) => (
+            <g key={`legs-${p.id}`}>
+              {legHoles(p).map((h) => {
+                const xy = holeXY(h.col, h.y)
+                return (
+                  <circle key={h.leg.id} cx={xy.x} cy={xy.y} r={9} fill="transparent" className="cursor-grab"
+                    onPointerDown={(e) => startLegDrag(e, p, h.leg.id)}>
+                    <title>다리 구부리기: 끌어서 주변 2~3칸 안의 빈 구멍에 꽂으세요</title>
+                  </circle>
+                )
+              })}
+            </g>
+          ))}
 
           {/* 점퍼선 */}
           {circuit.wires.map((w) => {
@@ -411,6 +494,20 @@ const CircuitEditor = forwardRef<CircuitEditorHandle, Props>(function CircuitEdi
             <path d={wirePath(pointXY(wireStart), mouse)} fill="none" stroke={wireHex(color)} strokeWidth={3} strokeDasharray="6 4" pointerEvents="none" />
           )}
 
+          {/* 다리 구부리기 미리보기 */}
+          {legDrag && (() => {
+            const hole = nearestHole(legDrag.x, legDrag.y, PITCH * 0.7)
+            const okDist = !!hole && Math.hypot(hole.col - legDrag.defaultCol, hole.y - legDrag.defaultY) <= MAX_LEG_BEND
+            const valid = !!hole && okDist && canPlaceLeg(circuit, legDrag.partId, legDrag.legId, hole.col, hole.y)
+            const target = hole ? holeXY(hole.col, hole.y) : { x: legDrag.x, y: legDrag.y }
+            return (
+              <g pointerEvents="none">
+                <line x1={target.x} y1={target.y} x2={legDrag.x} y2={legDrag.y} stroke={valid ? '#22c55e' : '#ef4444'} strokeWidth={1.5} strokeDasharray="3 2" opacity={0.6} />
+                <circle cx={target.x} cy={target.y} r={8} fill="none" stroke={valid ? '#22c55e' : '#ef4444'} strokeWidth={2} />
+              </g>
+            )
+          })()}
+
           {/* 드래그 고스트 */}
           {drag && drag.moved && (
             <g transform={`translate(${holeXY(drag.col, drag.y).x} ${holeXY(drag.col, drag.y).y}) rotate(${drag.rot * 90})`} opacity={0.75} pointerEvents="none">
@@ -430,6 +527,7 @@ const CircuitEditor = forwardRef<CircuitEditorHandle, Props>(function CircuitEdi
             </span>
           )}
           {wireStart && <span className="rounded bg-orange-600 px-2 py-0.5 text-white">선 연결 중: {pointName(wireStart)} → 끝점을 클릭 (Esc 취소)</span>}
+          {legDrag && <span className="rounded bg-orange-600 px-2 py-0.5 text-white">다리 구부리는 중: 주변 2~3칸 안의 빈 구멍 위에서 손을 떼세요</span>}
           {msg && <span className="rounded bg-rose-600 px-2 py-0.5 text-white" role="status">{msg}</span>}
         </div>
       </div>

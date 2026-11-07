@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { Route, Routes } from 'react-router-dom'
 import Layout from './components/Layout'
+import PartDefs from './components/circuit/PartDefs'
 import Home from './pages/Home'
 import Basics from './pages/Basics'
 import SensorList from './pages/SensorList'
@@ -18,6 +19,7 @@ const Loading = () => <div className="grid h-full place-items-center p-10 text-s
 export default function App() {
   return (
     <Suspense fallback={<Loading />}>
+      <PartDefs />
       <Routes>
         <Route element={<Layout />}>
           <Route index element={<Home />} />

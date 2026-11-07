@@ -66,6 +66,8 @@ export interface PlacedPart {
   col: number
   y: number
   rot: Rot
+  /** 다리를 구부려서 기본 위치가 아닌 다른 구멍에 꽂았을 때 (legId → 구멍) */
+  bend?: Record<string, { col: number; y: number }>
 }
 
 export interface Wire {
@@ -91,16 +93,29 @@ export function rotate(dx: number, dy: number, rot: Rot): [number, number] {
   }
 }
 
-/** 부품 다리들이 꽂힌 구멍 */
-export function legHoles(p: Pick<PlacedPart, 'kind' | 'col' | 'y' | 'rot'>) {
+/** 부품 다리들이 꽂힌 구멍 (구부린 다리는 bend 의 절대 위치를 쓴다) */
+export function legHoles(p: Pick<PlacedPart, 'kind' | 'col' | 'y' | 'rot'> & { bend?: PlacedPart['bend'] }) {
   return PART_DEFS[p.kind].legs.map((l) => {
+    const bent = p.bend?.[l.id]
+    if (bent) return { leg: l, col: bent.col, y: bent.y }
     const [dx, dy] = rotate(l.dx, l.dy, p.rot)
     return { leg: l, col: p.col + dx, y: p.y + dy }
   })
 }
 
+/** 다리 하나를 (col, y) 구멍으로 옮길 수 있는가 (다른 다리/선이 없는 빈 구멍이어야 함) */
+export function canPlaceLeg(c: Circuit, partId: string, legId: string, col: number, y: number) {
+  if (!isHole(col, y)) return false
+  const part = c.parts.find((p) => p.id === partId)
+  if (!part) return false
+  const occ = occupiedHoles(c)
+  const current = legHoles(part).find((h) => h.leg.id === legId)
+  if (current) occ.delete(holeId(current.col, current.y))
+  return !occ.has(holeId(col, y))
+}
+
 /** 부품을 이 위치에 놓을 수 있는가 (구멍 밖/겹침 검사) */
-export function canPlace(c: Circuit, p: Pick<PlacedPart, 'kind' | 'col' | 'y' | 'rot'>, ignoreId?: string) {
+export function canPlace(c: Circuit, p: Pick<PlacedPart, 'kind' | 'col' | 'y' | 'rot'> & { bend?: PlacedPart['bend'] }, ignoreId?: string) {
   const holes = legHoles(p)
   if (!holes.every((h) => isHole(h.col, h.y))) return false
   const used = occupiedHoles(c, ignoreId)

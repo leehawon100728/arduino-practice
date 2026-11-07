@@ -14,12 +14,21 @@ export interface PartVisualState {
   reversed?: boolean
 }
 
-function Legs({ kind }: { kind: CircuitPartKind }) {
+export type LegPos = Record<string, { x: number; y: number }>
+
+function legXY(kind: CircuitPartKind, legId: string, legPos?: LegPos) {
+  if (legPos?.[legId]) return legPos[legId]
+  const l = PART_DEFS[kind].legs.find((x) => x.id === legId)!
+  return { x: l.dx * 20, y: l.dy * 20 }
+}
+
+function Legs({ kind, legPos }: { kind: CircuitPartKind; legPos?: LegPos }) {
   return (
     <>
-      {PART_DEFS[kind].legs.map((l) => (
-        <circle key={l.id} cx={l.dx * 20} cy={l.dy * 20} r={3.2} fill="#9ca3af" stroke="#4b5563" strokeWidth={1} />
-      ))}
+      {PART_DEFS[kind].legs.map((l) => {
+        const { x, y } = legXY(kind, l.id, legPos)
+        return <circle key={l.id} cx={x} cy={y} r={3.2} fill="#9ca3af" stroke="#4b5563" strokeWidth={1} />
+      })}
     </>
   )
 }
@@ -49,7 +58,7 @@ function Module({ kind, w, label, state, children }: { kind: CircuitPartKind; w:
   )
 }
 
-export default function PartGraphic({ kind, state = {} }: { kind: CircuitPartKind; state?: PartVisualState }) {
+export default function PartGraphic({ kind, state = {}, legPos }: { kind: CircuitPartKind; state?: PartVisualState; legPos?: LegPos }) {
   switch (kind) {
     case 'pir':
       return (
@@ -98,7 +107,7 @@ export default function PartGraphic({ kind, state = {} }: { kind: CircuitPartKin
           <line x1={20} y1={0} x2={14} y2={-10} stroke="#d1d5db" strokeWidth={2} />
           <ellipse cx={10} cy={-18} rx={11} ry={9} fill="#fef3c7" stroke="#b45309" />
           <path d="M2 -18 q2 -6 4 0 t4 0 t4 0 t4 0" fill="none" stroke="#b91c1c" strokeWidth={1.5} />
-          <Legs kind={kind} />
+          <Legs kind={kind} legPos={legPos} />
         </g>
       )
     case 'pushbutton':
@@ -106,37 +115,42 @@ export default function PartGraphic({ kind, state = {} }: { kind: CircuitPartKin
         <g>
           <rect x={-7} y={6} width={54} height={48} rx={4} fill="#374151" stroke="#111827" />
           <circle cx={20} cy={30} r={13} fill={state.pressed ? '#991b1b' : '#dc2626'} stroke="#7f1d1d" strokeWidth={2} />
-          <Legs kind={kind} />
+          <Legs kind={kind} legPos={legPos} />
         </g>
       )
     case 'res-220':
     case 'res-10k': {
-      const bands = kind === 'res-220' ? ['#dc2626', '#dc2626', '#78350f'] : ['#78350f', '#111827', '#ea580c']
+      // 실제 탄소피막 저항 색: 220Ω=빨빨갈, 10kΩ=갈검주 (국제 저항 색띠 규격)
+      const bands = kind === 'res-220' ? ['#d6281f', '#d6281f', '#5a3a1a'] : ['#5a3a1a', '#1a1a1a', '#e8740c']
       return (
         <g>
-          <line x1={0} y1={0} x2={0} y2={80} stroke="#d1d5db" strokeWidth={2} />
-          <rect x={-6} y={20} width={12} height={40} rx={5} fill="#e7c9a0" stroke="#a16207" />
-          {bands.map((c, i) => <rect key={i} x={-6} y={26 + i * 8} width={12} height={3} fill={c} />)}
-          <rect x={-6} y={52} width={12} height={3} fill="#ca8a04" />
-          <text x={9} y={44} fontSize={8} fill="currentColor" className="fill-slate-600 dark:fill-slate-300">{kind === 'res-220' ? '220Ω' : '10kΩ'}</text>
-          <Legs kind={kind} />
+          <line x1={0} y1={0} x2={0} y2={21} stroke="url(#leadGrad)" strokeWidth={2.4} />
+          <line x1={0} y1={59} x2={0} y2={80} stroke="url(#leadGrad)" strokeWidth={2.4} />
+          <rect x={-7} y={19} width={14} height={42} rx={6} fill="url(#resistorBodyGrad)" stroke="#7c5a32" strokeWidth={0.8} />
+          <rect x={-3.5} y={19} width={3} height={42} fill="#fff" opacity={0.3} />
+          {bands.map((c, i) => <rect key={i} x={-7} y={26 + i * 9} width={14} height={4.5} fill={c} />)}
+          <rect x={-7} y={53} width={14} height={4.5} fill="#c9972e" />
+          <Legs kind={kind} legPos={legPos} />
         </g>
       )
     }
     default: {
-      // LED
+      // LED (다리는 구부려서 다른 구멍에 꽂을 수 있다; 몸통은 제자리에 고정)
       const b = state.brightness ?? 0
       const fill = LED_FILL[kind]
+      const anode = legXY(kind, 'anode', legPos)
+      const cathode = legXY(kind, 'cathode', legPos)
       return (
         <g>
-          <path d="M0 0 L0 -6 L4 -12" fill="none" stroke="#d1d5db" strokeWidth={2} />
-          <line x1={20} y1={0} x2={16} y2={-12} stroke="#d1d5db" strokeWidth={2} />
+          <path d={`M${anode.x} ${anode.y} L${anode.x} ${anode.y - 6} L4 -12`} fill="none" stroke="url(#leadGrad)" strokeWidth={2} />
+          <path d={`M${cathode.x} ${cathode.y} L${cathode.x} ${cathode.y - 6} L16 -12`} fill="none" stroke="url(#leadGrad)" strokeWidth={2} />
           {b > 0 && !state.burnt && <circle cx={10} cy={-22} r={14 + b * 10} fill={fill} opacity={0.15 + b * 0.35} filter="url(#glow)" />}
           <path d="M1 -14 L1 -24 A9 9 0 0 1 19 -24 L19 -14 Z" fill={state.burnt ? '#57534e' : fill} opacity={state.burnt ? 1 : 0.45 + b * 0.55} stroke={state.burnt ? '#292524' : '#7f1d1d'} strokeWidth={1} />
+          <path d="M4 -22 A6 6 0 0 1 10 -27" fill="none" stroke="#fff" strokeWidth={1.4} opacity={state.burnt ? 0 : 0.5} />
           <rect x={-1} y={-15} width={22} height={3} fill={state.burnt ? '#44403c' : fill} />
           <text x={-6} y={-4} fontSize={9} fontWeight={700} fill="#dc2626">+</text>
           {state.burnt && <text x={10} y={-34} textAnchor="middle" fontSize={16}>💥</text>}
-          <Legs kind={kind} />
+          <Legs kind={kind} legPos={legPos} />
         </g>
       )
     }
