@@ -495,8 +495,15 @@ const CircuitEditor = forwardRef<CircuitEditorHandle, Props>(function CircuitEdi
             const d = wirePath(a, b)
             return (
               <g key={w.id} className={readOnly ? '' : 'cursor-pointer'}
-                onPointerDown={(e) => { e.stopPropagation() }}
-                onPointerUp={(e) => { e.stopPropagation(); if (!readOnly && !drag) { setSel({ type: 'wire', id: w.id }); setWireStart(null) } }}>
+                // 부품을 옮기거나 다리를 구부리거나 다른 점퍼선을 잇는 중에는, 이 선의 두꺼운 터치 영역이
+                // 아래 구멍으로 가는 포인터 이벤트를 가로채지 않도록 그대로 통과시킨다 (선에 가려진 구멍도 쓸 수 있게)
+                onPointerDown={(e) => { if (!drag && !legDrag && !wireStart) e.stopPropagation() }}
+                onPointerUp={(e) => {
+                  if (readOnly || drag || legDrag || wireStart) return
+                  e.stopPropagation()
+                  setSel({ type: 'wire', id: w.id })
+                  setWireStart(null)
+                }}>
                 <path d={d} fill="none" stroke="transparent" strokeWidth={12} />
                 {selected && <path d={d} fill="none" stroke="#facc15" strokeWidth={9} opacity={0.7} />}
                 <path d={d} fill="none" stroke="#0f172a" strokeWidth={5.5} opacity={0.35} />
