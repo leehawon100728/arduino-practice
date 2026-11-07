@@ -10,8 +10,8 @@ import type { BoardSnapshot } from '../../sim/board'
 import PartGraphic from './PartGraphic'
 
 export interface CircuitEditorHandle {
-  beginDrag: (kind: CircuitPartKind, clientX: number, clientY: number) => void
-  autoPlace: (kind: CircuitPartKind) => void
+  beginDrag: (kind: CircuitPartKind, clientX: number, clientY: number, rot?: Rot) => void
+  autoPlace: (kind: CircuitPartKind, rot?: Rot) => void
 }
 
 interface Props {
@@ -152,10 +152,10 @@ const CircuitEditor = forwardRef<CircuitEditorHandle, Props>(function CircuitEdi
     }
   }
 
-  const autoPlace = (kind: CircuitPartKind) => {
+  const autoPlace = (kind: CircuitPartKind, rot: Rot = 0) => {
     for (const y of PREFERRED_ROW[kind]) {
       for (let col = 1; col <= BB_COLS; col++) {
-        const cand = { kind, col, y, rot: 0 as Rot }
+        const cand = { kind, col, y, rot }
         if (canPlace(circuit, cand)) {
           const id = newId('p')
           change({ ...circuit, parts: [...circuit.parts, { id, ...cand }] })
@@ -169,12 +169,12 @@ const CircuitEditor = forwardRef<CircuitEditorHandle, Props>(function CircuitEdi
   }
 
   useImperativeHandle(ref, () => ({
-    beginDrag(kind, clientX, clientY) {
+    beginDrag(kind, clientX, clientY, rot = 0) {
       if (readOnly) return
       const p = toSvg(clientX, clientY)
       const col = p ? Math.round((p.x - BB.x - 30) / PITCH) + 1 : 1
       const y = p ? Math.round((p.y - BB.y - 25) / PITCH) : 3
-      setDrag({ partId: null, kind, rot: 0, col, y, offCol: 0, offY: 0, moved: false, startX: clientX, startY: clientY })
+      setDrag({ partId: null, kind, rot, col, y, offCol: 0, offY: 0, moved: false, startX: clientX, startY: clientY })
     },
     autoPlace,
   }))
@@ -198,7 +198,7 @@ const CircuitEditor = forwardRef<CircuitEditorHandle, Props>(function CircuitEdi
       if (!d) return
       if (d.moved) commitDrag(d)
       else if (d.partId) setSel({ type: 'part', id: d.partId })
-      else autoPlace(d.kind) // 트레이에서 그냥 클릭하면 빈 자리에 자동 배치
+      else autoPlace(d.kind, d.rot) // 트레이에서 그냥 클릭하면 빈 자리에 자동 배치
     }
     window.addEventListener('pointermove', move)
     window.addEventListener('pointerup', up)
