@@ -107,14 +107,22 @@ const CircuitEditor = forwardRef<CircuitEditorHandle, Props>(function CircuitEdi
     return { x: pt.x, y: pt.y }
   }, [])
 
+  // 화면에 실제로 그려지는 크기(화면 px / svg 단위)에 맞춰 터치 허용 오차를 넓힌다 —
+  // 작은 화면에서는 svg 가 많이 축소돼 표시되므로, 고정된 svg 단위 오차만으로는 손가락 터치가 잘 안 먹는다
+  const hitTolerance = useCallback(() => {
+    const scale = svgRef.current?.getScreenCTM()?.a || 1
+    return Math.max(8, Math.min(24, 16 / scale))
+  }, [])
+
   const pointAt = useCallback((x: number, y: number): string | null => {
-    for (const p of ARDUINO_PINS) if (Math.abs(p.x - x) <= 7 && Math.abs(p.y - y) <= 9) return `P:${p.id}`
+    const tol = hitTolerance()
+    for (const p of ARDUINO_PINS) if (Math.abs(p.x - x) <= tol * 0.9 && Math.abs(p.y - y) <= tol * 1.15) return `P:${p.id}`
     const col = Math.round((x - BB.x - 30) / PITCH) + 1
     const row = Math.round((y - BB.y - 25) / PITCH)
     if (!isHole(col, row)) return null
     const h = holeXY(col, row)
-    return Math.hypot(h.x - x, h.y - y) <= 8 ? holeId(col, row) : null
-  }, [])
+    return Math.hypot(h.x - x, h.y - y) <= tol ? holeId(col, row) : null
+  }, [hitTolerance])
 
   const change = (c: Circuit) => onChange?.(c)
   const flash = (m: string) => { setMsg(m); window.setTimeout(() => setMsg((x) => (x === m ? null : x)), 2500) }
@@ -255,7 +263,7 @@ const CircuitEditor = forwardRef<CircuitEditorHandle, Props>(function CircuitEdi
       const d = legDragRef.current
       setLegDrag(null)
       if (!d) return
-      const hole = nearestHole(d.x, d.y, PITCH * 0.7)
+      const hole = nearestHole(d.x, d.y, Math.max(PITCH * 0.7, hitTolerance()))
       if (!hole) { flash('구멍 위에서 손을 놓아야 다리를 꽂을 수 있어요.'); return }
       const part0 = circuit.parts.find((x) => x.id === d.partId)
       if (!part0) return
@@ -498,7 +506,7 @@ const CircuitEditor = forwardRef<CircuitEditorHandle, Props>(function CircuitEdi
           {/* 다리 구부리기 미리보기 */}
           {legDrag && (() => {
             const draggedPart = circuit.parts.find((x) => x.id === legDrag.partId)
-            const hole = nearestHole(legDrag.x, legDrag.y, PITCH * 0.7)
+            const hole = nearestHole(legDrag.x, legDrag.y, Math.max(PITCH * 0.7, hitTolerance()))
             const okDist = !!hole && Math.hypot(hole.col - legDrag.defaultCol, hole.y - legDrag.defaultY) <= maxLegBend(draggedPart?.kind ?? 'led-red')
             const valid = !!hole && okDist && canPlaceLeg(circuit, legDrag.partId, legDrag.legId, hole.col, hole.y)
             const target = hole ? holeXY(hole.col, hole.y) : { x: legDrag.x, y: legDrag.y }
