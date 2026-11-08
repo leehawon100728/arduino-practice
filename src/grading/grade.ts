@@ -280,27 +280,6 @@ function gradeWiring(problem: Problem, circuit: Circuit, beh: BehaviorResult | n
       continue
     }
 
-    if (id === 'cds') {
-      const expected = pinNum(pins.a0)
-      const read = (light: number) => {
-        const b = new SimBoard(circuit, { ...defaultValues(), 'cds.light': light })
-        b.warnings.clear()
-        const v = b.analogRead(expected)
-        return { v, floating: [...b.warnings.keys()].some((k) => k.startsWith('float')) }
-      }
-      const dark = read(0)
-      const bright = read(100)
-      const touches = parts.some((p) => ['l1', 'l2'].some((leg) => pinsOnNet(net.net(p.id, leg)).includes(expected)))
-      let msg: string | undefined
-      let note: string | undefined
-      if (!touches) msg = `CDS 가 ${pinLabel(expected)} 에 연결되지 않았어요. CDS 와 10kΩ 이 만나는 줄을 ${pinLabel(expected)} 에 연결하세요.`
-      else if (dark.floating) msg = 'CDS 회로가 5V 나 GND 에 연결되지 않았어요.'
-      else if (Math.abs(dark.v - bright.v) < 200) msg = 'CDS 값이 밝기에 따라 거의 변하지 않아요. 5V ─ 10kΩ ─ A0 ─ CDS ─ GND 전압 분배 회로를 만들어야 해요.'
-      else if (bright.v > dark.v) note = '이 배선은 밝을수록 값이 커져요 (수업 슬라이드와 반대). 조건식을 그에 맞게 쓰면 괜찮아요.'
-      wiredPin['cds.a0'] = touches ? expected : null
-      if (!msg) signalNets.push({ label: 'CDS 분배점', net: net.find(pinNumberToNode(expected)!), pin: expected })
-      add({ id: 'wire.cds.circuit', section: 'wiring', label: `CDS 전압 분배 회로 → ${pinLabel(expected)}`, weight: 12, ok: !msg, message: msg, note })
-    }
   }
 
   // ── LED ──

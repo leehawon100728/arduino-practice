@@ -102,13 +102,10 @@ export default function PartGraphic({ kind, state = {}, legPos }: { kind: Circui
       )
     case 'cds':
       return (
-        <g>
-          <line x1={0} y1={0} x2={6} y2={-10} stroke="#d1d5db" strokeWidth={2} />
-          <line x1={20} y1={0} x2={14} y2={-10} stroke="#d1d5db" strokeWidth={2} />
-          <ellipse cx={10} cy={-18} rx={11} ry={9} fill="#fef3c7" stroke="#b45309" />
-          <path d="M2 -18 q2 -6 4 0 t4 0 t4 0 t4 0" fill="none" stroke="#b91c1c" strokeWidth={1.5} />
-          <Legs kind={kind} legPos={legPos} />
-        </g>
+        <Module kind={kind} w={50} label="조도(CDS)" state={state}>
+          <circle cx={20} cy={-30} r={11} fill="#fef3c7" stroke="#b45309" strokeWidth={1.2} />
+          <path d="M12 -30 q2 -6 4 0 t4 0 t4 0 t4 0" fill="none" stroke="#b91c1c" strokeWidth={1.4} />
+        </Module>
       )
     case 'pushbutton':
       return (

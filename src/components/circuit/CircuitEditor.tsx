@@ -48,7 +48,7 @@ const ALL_HOLES: { col: number; y: number }[] = []
 for (let c = 1; c <= BB_COLS; c++) for (const y of [...RAIL_ROWS, ...TOP_ROWS, ...BOT_ROWS]) ALL_HOLES.push({ col: c, y })
 
 const PREFERRED_ROW: Record<CircuitPartKind, number[]> = {
-  pir: [3], dht11: [3], ultrasonic: [3], line: [3], ir: [3], cds: [10, 3], pushbutton: [7],
+  pir: [3], dht11: [3], ultrasonic: [3], line: [3], ir: [3], cds: [3], pushbutton: [7],
   'led-red': [12, 5], 'led-green': [12, 5], 'led-blue': [12, 5], 'res-220': [7], 'res-10k': [7, 3],
 }
 
@@ -582,7 +582,7 @@ function PartBounds({ kind }: { kind: CircuitPartKind }) {
   const legs = PART_DEFS[kind].legs
   const xs = legs.map((l) => l.dx * 20)
   const ys = legs.map((l) => l.dy * 20)
-  const top = PART_DEFS[kind].module ? -62 : isLed(kind) || kind === 'cds' ? -36 : -10
+  const top = PART_DEFS[kind].module ? -62 : isLed(kind) ? -36 : -10
   return (
     <rect x={Math.min(...xs) - 12} y={Math.min(...ys, top)} width={Math.max(...xs) - Math.min(...xs) + 24} height={Math.max(...ys) + 12 - Math.min(...ys, top)}
       fill="none" stroke="#f59e0b" strokeWidth={2} strokeDasharray="5 3" rx={4} />

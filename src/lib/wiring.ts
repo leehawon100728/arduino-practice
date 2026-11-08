@@ -9,15 +9,6 @@ export function wiringRows(p: Problem, id: SensorId): WiringRow[] {
   const s = getSensor(id)
   const pins = p.pins[id] ?? {}
   const name = s.shortName
-  if (id === 'cds') {
-    const a = pinLabel(pins.a0)
-    return [
-      { part: name, from: 'CDS 다리1', to: '5V' },
-      { part: name, from: 'CDS 다리2', to: `${a} (분배점)`, note: 'CDS 와 10kΩ 이 만나는 열' },
-      { part: '10kΩ', from: '한쪽', to: `${a} (분배점)` },
-      { part: '10kΩ', from: '다른 쪽', to: 'GND' },
-    ]
-  }
   if (id === 'button') {
     const d = pinLabel(pins.sig)
     return p.buttonMode === 'pulldown'

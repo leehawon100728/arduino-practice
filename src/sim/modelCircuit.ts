@@ -7,9 +7,8 @@ import { holeId } from './geometry'
 // ─────────────────────────────────────────────────────────────
 // 모범 배선 자동 생성
 //   5V → 위 + 레일, GND → 위 − 레일, 위/아래 레일은 점퍼로 연결
-//   센서 모듈: a 열에 꽂고 c 열에서 선을 뺀다
+//   센서 모듈(CDS 포함, VCC/GND/신호 3핀): a 열에 꽂고 c 열에서 선을 뺀다
 //   LED: 220Ω 를 홈 위로 세로로 꽂고 LED 는 h 열
-//   CDS: 5V ─ 10kΩ ─ A0 ─ CDS ─ GND (어두울수록 값이 커짐)
 //   버튼(풀다운): 5V ─ 버튼 ─ 신호핀 ─ 10kΩ ─ GND
 // ─────────────────────────────────────────────────────────────
 
@@ -56,7 +55,7 @@ export function buildModelCircuit(spec: ModelSpec): Circuit {
   wire(H(2, 1), H(2, 17), 'black')
 
   let c = 4
-  const modules = spec.sensors.filter((s) => s !== 'button' && s !== 'cds')
+  const modules = spec.sensors.filter((s) => s !== 'button')
   for (const id of modules) {
     const s = getSensor(id)
     addPart(SENSOR_PART[id], c, 3)
@@ -87,16 +86,6 @@ export function buildModelCircuit(spec: ModelSpec): Circuit {
       wire(H(c + 6, 14), H(c + 6, 17), 'black')
       c += 8
     }
-  }
-
-  if (spec.sensors.includes('cds')) {
-    const pin = spec.pins.cds!.a0
-    addPart('res-10k', c, 12, 3) // (c,12) ─ (c+4,12)
-    addPart('cds', c + 4, 10)
-    wire(H(c, 14), H(c, 16), 'red')
-    wire(H(c + 4, 14), P(pin), signalColor())
-    wire(H(c + 5, 14), H(c + 5, 17), 'black')
-    c += 7
   }
 
   for (const led of spec.leds) {

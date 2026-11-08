@@ -89,7 +89,6 @@ export function solveCircuit(inp: SolveInput): SolveResult {
     const def = PART_DEFS[part.kind]
     const n = (leg: string) => net.net(part.id, leg)!
     if (isResistor(part.kind)) addG(n('r1'), n('r2'), 1 / def.ohms!)
-    else if (part.kind === 'cds') addG(n('l1'), n('l2'), 1 / cdsOhms(values['cds.light'] ?? 60))
     else if (isLed(part.kind)) leds.push(part)
     else if (def.module) modules.push(part)
   }
@@ -138,6 +137,12 @@ export function solveCircuit(inp: SolveInput): SolveResult {
         }
         case 'dht11': s.push({ a: n('data'), v: vcc, g: 1 / 10000 }); break
         case 'ultrasonic': s.push({ a: n('echo'), v: 0, g: 1 / 100 }); break
+        case 'cds': {
+          // 모듈 내부에 분배 저항(10kΩ)이 들어 있다고 가정: 어두울수록(저항 큼) AO 전압이 커진다
+          const rc = cdsOhms(values['cds.light'] ?? 60)
+          s.push({ a: n('ao'), v: (vcc * rc) / (10000 + rc), g: 1 / 1000 })
+          break
+        }
       }
     }
     return { g, s }
