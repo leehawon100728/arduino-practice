@@ -301,8 +301,19 @@ const CircuitEditor = forwardRef<CircuitEditorHandle, Props>(function CircuitEdi
   // ── 키보드 ──
   const removeSel = () => {
     if (!sel) return
-    if (sel.type === 'part') change({ ...circuit, parts: circuit.parts.filter((p) => p.id !== sel.id) })
-    else change({ ...circuit, wires: circuit.wires.filter((w) => w.id !== sel.id) })
+    if (sel.type === 'part') {
+      // 부품을 지울 때 그 다리에 꽂혀 있던 점퍼선도 같이 지운다 (안 지우면 선이 그 자리에 그대로 남아
+      // 마치 부품이 안 지워진 것처럼 구멍을 계속 막고 있게 된다)
+      const part = circuit.parts.find((p) => p.id === sel.id)
+      const legIds = part ? new Set(legHoles(part).map((h) => holeId(h.col, h.y))) : new Set<string>()
+      change({
+        ...circuit,
+        parts: circuit.parts.filter((p) => p.id !== sel.id),
+        wires: circuit.wires.filter((w) => !legIds.has(w.a) && !legIds.has(w.b)),
+      })
+    } else {
+      change({ ...circuit, wires: circuit.wires.filter((w) => w.id !== sel.id) })
+    }
     setSel(null)
   }
   const rotateSel = () => {
