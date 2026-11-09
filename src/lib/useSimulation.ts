@@ -21,7 +21,7 @@ export interface SimState {
   virtualMs: number
 }
 
-export function useSimulation(opts: { code: string; circuit: Circuit; values: Record<string, number>; irActiveLow: boolean }) {
+export function useSimulation(opts: { code: string; circuit: Circuit; values: Record<string, number> }) {
   const [state, setState] = useState<SimState>({ running: false, snapshot: null, serial: [], runtimeError: null, compileErrors: [], slow: false, virtualMs: 0 })
   const boardRef = useRef<SimBoard | null>(null)
   const runnerRef = useRef<Runner | null>(null)
@@ -42,13 +42,13 @@ export function useSimulation(opts: { code: string; circuit: Circuit; values: Re
 
   const start = useCallback(() => {
     stop()
-    const { code, circuit, values, irActiveLow } = latest.current
+    const { code, circuit, values } = latest.current
     const compiled = compileSource(code)
     if (!compiled.ok) {
       setState((s) => ({ ...s, compileErrors: compiled.errors, runtimeError: null }))
       return false
     }
-    const board = new SimBoard(circuit, values, { irActiveLow })
+    const board = new SimBoard(circuit, values)
     board.recordEvents = false
     const runner = compiled.createRunner!(board)
     board.now = () => runner.ctx.time

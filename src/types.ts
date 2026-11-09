@@ -4,7 +4,7 @@
 // 실제 데이터는 src/data/*.ts 에 있다.
 // ─────────────────────────────────────────────────────────────
 
-export type SensorId = 'pir' | 'dht11' | 'ultrasonic' | 'button' | 'cds' | 'line' | 'ir'
+export type SensorId = 'pir' | 'dht11' | 'ultrasonic' | 'button' | 'cds' | 'line' | 'pot'
 
 /** 아두이노 UNO 핀 이름. D0/D1(시리얼)은 문제에 절대 배정하지 않는다. */
 export type DigitalPin =
@@ -58,7 +58,7 @@ export interface SensorControl {
   testValues: number[]
 }
 
-/** 센서별 모범답안 조각. {{signalKey}} 와 {{activeLevel}} 은 문제 생성 시 치환된다. */
+/** 센서별 모범답안 조각. {{signalKey}} 는 문제 생성 시 치환된다. */
 export interface SensorSnippet {
   includes: string[]
   globals: string
@@ -223,8 +223,6 @@ export interface Problem {
   pins: Partial<Record<SensorId, Record<string, ArduinoPin>>>
   leds: ProblemLed[]
   cards: AppliedCard[]
-  /** IR 센서 감지 극성 (기본: 감지 시 LOW) */
-  irActiveLow: boolean
   /** 버튼 배선 방식 (모범답안 기준, 채점은 둘 다 허용) */
   buttonMode: 'pulldown' | 'pullup'
   requireSerial: boolean

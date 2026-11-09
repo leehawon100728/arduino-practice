@@ -42,7 +42,12 @@ export const SOLUTION_EXTRAS: Record<SensorId, SensorExtra> = {
     calibration: { setExpr: 'threshold = cdsValue + 150;', cond: 'cdsValue > threshold', desc: '시작할 때보다 150 이상 어두워지면' },
   },
   line: { condName: 'isWhite' },
-  ir: { condName: 'isObstacle' },
+  pot: {
+    condName: 'isHigh',
+    levels: { varName: 'potValue', lo: 341, hi: 682, unit: '' },
+    pwm: { expr: 'map(potValue, 0, 1023, 0, 255)', desc: '손잡이를 돌릴수록 밝게' },
+    calibration: { setExpr: 'threshold = potValue + 150;', cond: 'potValue > threshold', desc: '시작할 때보다 150 이상 돌리면' },
+  },
 }
 
 export interface ComposeOptions {
@@ -59,7 +64,6 @@ const IND = '  '
 function fill(text: string, p: Problem, id: SensorId) {
   const pins = p.pins[id] ?? {}
   return text
-    .replace(/\{\{activeLevel\}\}/g, p.irActiveLow ? 'LOW' : 'HIGH')
     .replace(/\{\{(\w+)\}\}/g, (_, k: string) => (pins[k] ? pinCode(pins[k]) : '?'))
 }
 

@@ -50,7 +50,7 @@ export class Harness {
   ledPins: number[]
 
   constructor(compiled: CompileResult, circuit: Circuit, problem: Problem, initial: Record<string, number> = {}) {
-    this.board = new SimBoard(circuit, { ...defaultValues(), ...initial }, { irActiveLow: problem.irActiveLow })
+    this.board = new SimBoard(circuit, { ...defaultValues(), ...initial })
     this.runner = compiled.createRunner!(this.board)
     this.board.now = () => this.runner.ctx.time
     this.ledPins = problem.leds.map((l) => pinNum(l.pin))

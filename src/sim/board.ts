@@ -40,7 +40,6 @@ const freshPins = (): PinState[] => Array.from({ length: 20 }, () => ({ mode: 'I
 export class SimBoard implements Hardware {
   circuit: Circuit
   values: Record<string, number>
-  irActiveLow: boolean
   pins: PinState[] = freshPins()
   burnt = new Set<string>()
   warnings = new Map<string, string>()
@@ -65,10 +64,9 @@ export class SimBoard implements Hardware {
   recordEvents = true
   onSerial?: (text: string) => void
 
-  constructor(circuit: Circuit, values: Record<string, number>, opts: { irActiveLow?: boolean } = {}) {
+  constructor(circuit: Circuit, values: Record<string, number>) {
     this.circuit = circuit
     this.values = { ...values }
-    this.irActiveLow = opts.irActiveLow ?? true
   }
 
   // ── 상태 변경 ──
@@ -100,7 +98,7 @@ export class SimBoard implements Hardware {
 
   solve(): SolveResult {
     if (this.cache) return this.cache
-    const r = solveCircuit({ circuit: this.circuit, net: this.netlist(), pins: this.pins, values: this.values, irActiveLow: this.irActiveLow, burnt: this.burnt })
+    const r = solveCircuit({ circuit: this.circuit, net: this.netlist(), pins: this.pins, values: this.values, burnt: this.burnt })
     this.cache = r
     if (r.short) this.warn('short', '5V 와 GND 가 바로 연결됐어요 (단락). 보드가 위험해요!')
     for (const [id, led] of r.leds) {

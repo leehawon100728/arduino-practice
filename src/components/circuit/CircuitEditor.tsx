@@ -48,7 +48,7 @@ const ALL_HOLES: { col: number; y: number }[] = []
 for (let c = 1; c <= BB_COLS; c++) for (const y of [...RAIL_ROWS, ...TOP_ROWS, ...BOT_ROWS]) ALL_HOLES.push({ col: c, y })
 
 const PREFERRED_ROW: Record<CircuitPartKind, number[]> = {
-  pir: [3], dht11: [3], ultrasonic: [3], line: [3], ir: [3], cds: [3], pushbutton: [7],
+  pir: [3], dht11: [3], ultrasonic: [3], line: [3], pot: [3], cds: [3], pushbutton: [7],
   'led-red': [12, 5], 'led-green': [12, 5], 'led-blue': [12, 5], 'res-220': [7], 'res-10k': [7, 3],
 }
 

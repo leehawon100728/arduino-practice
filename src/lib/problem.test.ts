@@ -23,11 +23,11 @@ describe('데이터 스키마', () => {
     expect(def.button).toEqual({ sig: 'D2' })
     expect(def.cds).toEqual({ a0: 'A0' })
     expect(def.line).toEqual({ d0: 'D3', a0: 'A0' })
-    expect(def.ir).toEqual({ out: 'D4' })
+    expect(def.pot).toEqual({ out: 'A0' })
   })
   it('모든 스니펫 플레이스홀더가 신호 key 와 일치', () => {
     for (const s of SENSORS) {
-      const keys = new Set([...s.signals.map((g) => g.key), 'activeLevel'])
+      const keys = new Set([...s.signals.map((g) => g.key)])
       const snippets = [s.snippet, ...s.alternatives.map((a) => a.snippet)]
       for (const sn of snippets) {
         const text = [sn.globals, sn.setup, sn.read, sn.condition.expr].join('\n')
@@ -94,10 +94,10 @@ describe('문제 생성', () => {
   })
 
   it('타이머: 실전 기본 40분 / Lv3 30분 / 설정값, 연습 Lv1 없음', () => {
-    expect(generateProblem({ mode: 'exam', sensors: ['pir', 'ir'], difficulty: 2, seed: 1 }).timeLimitSec).toBe(2400)
-    expect(generateProblem({ mode: 'exam', sensors: ['pir', 'ir'], difficulty: 3, seed: 1 }).timeLimitSec).toBe(1800)
-    expect(generateProblem({ mode: 'exam', sensors: ['pir', 'ir'], difficulty: 2, seed: 1, timerMinutes: 25 }).timeLimitSec).toBe(1500)
-    expect(generateProblem({ mode: 'combo', sensors: ['pir', 'ir'], difficulty: 1, seed: 1 }).timeLimitSec).toBeNull()
+    expect(generateProblem({ mode: 'exam', sensors: ['pir', 'pot'], difficulty: 2, seed: 1 }).timeLimitSec).toBe(2400)
+    expect(generateProblem({ mode: 'exam', sensors: ['pir', 'pot'], difficulty: 3, seed: 1 }).timeLimitSec).toBe(1800)
+    expect(generateProblem({ mode: 'exam', sensors: ['pir', 'pot'], difficulty: 2, seed: 1, timerMinutes: 25 }).timeLimitSec).toBe(1500)
+    expect(generateProblem({ mode: 'combo', sensors: ['pir', 'pot'], difficulty: 1, seed: 1 }).timeLimitSec).toBeNull()
   })
 
   it('실습 URL 왕복', () => {

@@ -183,7 +183,7 @@ type Add = (it: CheckItem) => void
 
 function gradeWiring(problem: Problem, circuit: Circuit, beh: BehaviorResult | null, add: Add) {
   const net = new Netlist(circuit)
-  const board = new SimBoard(circuit, defaultValues(), { irActiveLow: problem.irActiveLow })
+  const board = new SimBoard(circuit, defaultValues())
   const solve = board.solve()
 
   add({ id: 'wire.short', section: 'wiring', label: '5V-GND 단락 없음', weight: 3, ok: !solve.short, message: solve.short ? '5V 와 GND 가 바로 연결됐어요 (단락). 레일 연결을 확인하세요.' : undefined })
@@ -410,10 +410,11 @@ function gradeCode(problem: Problem, compiled: CompileResult, beh: BehaviorResul
         if (!ok) msg = calls.some((c) => c.name === 'dht') ? `DHT 객체를 ${pin}번 핀으로 만들어야 해요. 예: DHT11 dht11(${pin});` : 'dht11.readTemperatureHumidity(temperature, humidity) 로 온습도를 읽어야 해요.'
         break
       }
-      case 'cds': {
-        const pin = pinNum(pins.a0)
+      case 'cds':
+      case 'pot': {
+        const pin = pinNum(pins[getSensor(id).signals[0].key])
         ok = called('analogRead', pin)
-        if (!ok) msg = called('digitalRead', pin) ? '조도 센서는 digitalRead 가 아니라 analogRead 로 읽어요 (0~1023).' : `analogRead(${pinLabel(pin)}) 로 조도 값을 읽어야 해요.${wrongPin('analogRead', pin)}`
+        if (!ok) msg = called('digitalRead', pin) ? `${name} 는 digitalRead 가 아니라 analogRead 로 읽어요 (0~1023).` : `analogRead(${pinLabel(pin)}) 로 ${id === 'cds' ? '조도' : '가변저항'} 값을 읽어야 해요.${wrongPin('analogRead', pin)}`
         break
       }
       case 'line': {
@@ -522,7 +523,7 @@ function thresholdHint(code: string, id: SensorId): string {
   for (const m of code.matchAll(re)) {
     const name = m[1] ?? m[6]
     const num = Number(m[3] ?? m[4])
-    const looksLike = varNames.includes(name) || new RegExp(id === 'ultrasonic' ? 'dist|cm' : id === 'cds' ? 'cds|light|bright|jodo' : 'temp|hum', 'i').test(name)
+    const looksLike = varNames.includes(name) || new RegExp(id === 'ultrasonic' ? 'dist|cm' : id === 'cds' ? 'cds|light|bright|jodo' : id === 'pot' ? 'pot|knob|vr|resist' : 'temp|hum', 'i').test(name)
     if (looksLike && (num < range.min || num > range.max)) found.push(`${name} ${m[2] ?? m[5]} ${num}`)
   }
   return found.length ? ` 조건 '${found[0]}' 의 기준값이 센서 범위(${range.min}~${range.max}${range.unit === '' ? '' : ' ' + range.unit})를 벗어나서 결과가 항상 같아요.` : ''
@@ -763,6 +764,10 @@ function expectedValues(problem: Problem, id: SensorId, values: Record<string, n
     case 'cds': {
       const b = new SimBoard(buildModelCircuit(problem), values)
       return [{ v: b.analogRead(pinNum(problem.pins.cds!.a0)), tol: 3 }]
+    }
+    case 'pot': {
+      const b = new SimBoard(buildModelCircuit(problem), values)
+      return [{ v: b.analogRead(pinNum(problem.pins.pot!.out)), tol: 3 }]
     }
     default: return []
   }

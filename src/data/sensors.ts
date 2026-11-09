@@ -3,7 +3,6 @@ import type { ArduinoPin, SensorDef, SensorId } from '../types'
 // ─────────────────────────────────────────────────────────────
 // 센서 7종 데이터
 // - snippet 의 {{신호key}} 는 배정된 핀 번호로 바뀐다 (예: {{trig}} → 9, {{a0}} → A0)
-// - {{activeLevel}} 은 감지 시 신호 레벨(HIGH/LOW)로 바뀐다 (IR, 버튼 풀업)
 // - 새 센서를 추가하려면 이 배열에 항목을 추가하고 SensorId 타입에 id 를 넣는다.
 // ─────────────────────────────────────────────────────────────
 
@@ -429,60 +428,61 @@ export const SENSORS: SensorDef[] = [
     ],
   },
 
-  // ── 적외선 장애물 센서 ─────────────────────────────────────
+  // ── 가변저항 ──────────────────────────────────────────────
   {
-    id: 'ir',
-    name: '적외선 장애물 센서',
-    shortName: 'IR',
-    model: 'IR 장애물 감지 모듈',
-    icon: '🚧',
-    summary: '앞에 장애물이 있으면 OUT 신호가 바뀝니다. 대부분의 모듈은 감지 시 LOW 입니다.',
+    id: 'pot',
+    name: '가변저항',
+    shortName: '가변저항',
+    model: '가변저항(포텐셔미터) 모듈 (VCC/OUT/GND)',
+    icon: '🎛️',
+    summary: '손잡이를 돌리는 만큼 0V~5V 사이 전압을 내보내는 센서입니다. VCC/OUT/GND 3핀만 꽂고 analogRead 로 읽으면 0~1023 값이 나옵니다.',
     modulePins: [
       { id: 'vcc', label: 'VCC', role: 'vcc' },
-      { id: 'gnd', label: 'GND', role: 'gnd' },
       { id: 'out', label: 'OUT', role: 'signal' },
+      { id: 'gnd', label: 'GND', role: 'gnd' },
     ],
     signals: [
       {
-        key: 'out', label: 'OUT', modulePin: 'out', direction: 'input', pinType: 'digital',
-        defaultPin: 'D4', altPins: without(DIGITAL_FALLBACK, 'D4'), required: true,
-        allowedModes: ['INPUT'],
+        key: 'out', label: 'OUT', modulePin: 'out', direction: 'input', pinType: 'analog',
+        defaultPin: 'A0', altPins: without(ANALOG_FALLBACK, 'A0'), required: true,
+        allowedModes: [],
       },
     ],
     extraParts: [],
-    readMethods: ['digitalRead'],
-    continuous: false,
+    readMethods: ['analogRead'],
+    continuous: true,
     controls: [
-      { key: 'obstacle', label: '장애물', type: 'toggle', default: 0, onLabel: '있음', offLabel: '없음', testValues: [0, 1] },
+      { key: 'level', label: '손잡이 위치', type: 'slider', min: 0, max: 100, step: 1, unit: '%', default: 50, testValues: [0, 10, 25, 40, 50, 60, 75, 90, 100] },
     ],
-    sensibleRange: { min: 0, max: 1, unit: '' },
+    sensibleRange: { min: 0, max: 1023, unit: '' },
     snippet: {
       includes: [],
-      globals: 'const int irPin = {{out}};   // IR 센서 OUT 핀\nint irValue = 0;           // IR 값',
-      setup: 'pinMode(irPin, INPUT);     // IR 센서는 입력',
-      read: 'irValue = digitalRead(irPin);   // 장애물이 있으면 {{activeLevel}}',
-      valueVars: [{ name: 'irValue', label: 'IR', unit: '' }],
-      condition: { expr: 'irValue == {{activeLevel}}', desc: '장애물이 감지되면' },
+      globals: 'const int potPin = {{out}};   // 가변저항 OUT(가운데) 핀\nint potValue = 0;          // 가변저항 값 (0~1023)',
+      setup: '',
+      read: 'potValue = analogRead(potPin);   // 손잡이를 돌릴수록 커지는 값',
+      valueVars: [{ name: 'potValue', label: '가변저항', unit: '' }],
+      condition: { expr: 'potValue > 500', desc: '손잡이를 많이 돌려서 값이 500 보다 크면' },
       loopDelayMs: 100,
     },
     alternatives: [],
     notes: [
-      '흔한 모듈은 장애물 감지 시 LOW, 없으면 HIGH 입니다. 문제에 적힌 극성을 꼭 확인하세요.',
-      '파란 가변저항으로 감지 거리(약 2~30cm)를 조절합니다.',
-      '검은색 물체는 적외선을 흡수해서 잘 감지되지 않을 수 있어요.',
+      '가운데 OUT 핀의 전압이 손잡이 위치에 따라 0V~5V 로 바뀌고, analogRead 는 이를 0~1023 으로 읽어요.',
+      'analogRead 는 0~1023 입니다. analogWrite(0~255) 와 범위가 달라서 map(potValue, 0, 1023, 0, 255) 로 바꿔 주세요.',
+      '손잡이를 끝까지 돌려도 정확히 0 이나 1023 이 안 나올 수 있으니, 임계값은 시리얼 모니터로 확인하세요.',
     ],
     mistakes: [
-      '감지 시 HIGH 라고 착각해 조건을 반대로 씀',
-      '라인센서와 헷갈려 analogRead 로 읽음',
-      'VCC/GND 핀 순서를 확인하지 않고 꽂음',
+      'OUT 대신 VCC/GND 쪽 핀을 아날로그 핀에 연결',
+      'AO 가 아닌 디지털 핀에 연결하고 analogRead 사용',
+      'analogRead 값(0~1023)을 그대로 analogWrite 에 넣음 (map 필요)',
     ],
     examPitfalls: [
-      '모듈의 감지 LED 가 켜지는지 먼저 확인하면 배선 문제인지 코드 문제인지 구분할 수 있어요.',
+      '가운데 핀(OUT)이 A0 같은 아날로그 핀으로 가야 합니다. 양쪽 끝 핀은 5V 와 GND 입니다.',
+      'LED 밝기에 쓸 땐 map(값, 0, 1023, 0, 255) 후 analogWrite.',
     ],
     hints: [
-      'IR 장애물 센서는 디지털 센서예요. 장애물이 있을 때 값이 LOW(또는 HIGH)로 바뀝니다.',
-      'setup: pinMode(IR핀, INPUT)\nloop: 값 = digitalRead(IR핀)\n      만약 값 == 감지레벨 이면 LED 켜기',
-      'int irValue = digitalRead(irPin);\nif (irValue == LOW) {   // 감지 시 LOW 모듈 기준\n  digitalWrite(ledPin, HIGH);\n} else {\n  digitalWrite(ledPin, LOW);\n}',
+      '가변저항은 analogRead 로 읽는 아날로그 센서예요. 값은 0~1023 입니다.',
+      'loop: 값 = analogRead(A0)\n      밝기 = map(값, 0, 1023, 0, 255)\n      analogWrite(LED핀, 밝기)',
+      'int potValue = analogRead(potPin);\nint brightness = map(potValue, 0, 1023, 0, 255);\nanalogWrite(ledPin, brightness);',
     ],
   },
 ]

@@ -57,7 +57,7 @@ export default function Practice() {
   const [busy, setBusy] = useState(false)
   const editorRef = useRef<CircuitEditorHandle>(null)
 
-  const sim = useSimulation({ code, circuit, values, irActiveLow: problem?.irActiveLow ?? true })
+  const sim = useSimulation({ code, circuit, values })
 
   // 실시간 문법 검사 (입력 멈춘 뒤 0.4초)
   const [diag, setDiag] = useState<{ errors: Diagnostic[]; warnings: Diagnostic[] }>({ errors: [], warnings: [] })

@@ -25,7 +25,6 @@ export interface SolveInput {
   net: Netlist
   pins: PinState[]
   values: Record<string, number>
-  irActiveLow: boolean
   burnt: Set<string>
 }
 
@@ -124,9 +123,10 @@ export function solveCircuit(inp: SolveInput): SolveResult {
       const lvl = (high: boolean) => (high ? vcc : 0)
       switch (m.kind) {
         case 'pir': s.push({ a: n('out'), v: lvl((values['pir.motion'] ?? 0) === 1), g: 1 / 100 }); break
-        case 'ir': {
-          const obstacle = (values['ir.obstacle'] ?? 0) === 1
-          s.push({ a: n('out'), v: lvl(inp.irActiveLow ? !obstacle : obstacle), g: 1 / 100 })
+        case 'pot': {
+          // 가운데 단자(OUT)는 손잡이 위치(0~100%)에 비례한 전압을 낸다
+          const pos = Math.min(100, Math.max(0, values['pot.level'] ?? 50))
+          s.push({ a: n('out'), v: (vcc * pos) / 100, g: 1 / 1000 })
           break
         }
         case 'line': {

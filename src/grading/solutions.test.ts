@@ -51,7 +51,7 @@ describe('모범답안: 다른 방법 (OR, DHT.h, 풀업, 라인 A0)', () => {
     check(p, composeSolution(p, { logic: 'OR' }))
   })
   it('모든 변형이 통과', () => {
-    for (const combo of [['dht11', 'button'], ['line', 'ultrasonic'], ['button', 'ir']] as SensorId[][]) {
+    for (const combo of [['dht11', 'button'], ['line', 'ultrasonic'], ['button', 'pot']] as SensorId[][]) {
       const p = generateProblem({ mode: 'combo', sensors: combo, difficulty: 2, seed: 3, cards: [] })
       for (const v of solutionVariants(p)) {
         const prob = v.id === 'button-alt0' ? { ...p, buttonMode: 'pullup' as const } : p
@@ -89,7 +89,7 @@ describe('추가 요구 카드별 예시 코드', () => {
   it('5초 출력 쉬운 버전 (loop 횟수 세기)', () => {
     const p = generateProblem({ mode: 'combo', sensors: ['pir', 'cds'], difficulty: 2, seed: 1, cards: [{ cardId: 'every-5s' }] })
     check(p, composeSolution(p, { easyPeriodic: true }))
-    const q = generateProblem({ mode: 'combo', sensors: ['dht11', 'ir'], difficulty: 2, seed: 1, cards: [{ cardId: 'every-5s' }] })
+    const q = generateProblem({ mode: 'combo', sensors: ['dht11', 'pot'], difficulty: 2, seed: 1, cards: [{ cardId: 'every-5s' }] })
     check(q, composeSolution(q, { easyPeriodic: true }))
   })
 
@@ -147,7 +147,7 @@ describe('채점기는 틀린 답을 잡아낸다', () => {
   })
 
   it('힌트 감점', () => {
-    const p2 = generateProblem({ mode: 'combo', sensors: ['pir', 'ir'], difficulty: 2, seed: 1, cards: [] })
+    const p2 = generateProblem({ mode: 'combo', sensors: ['pir', 'pot'], difficulty: 2, seed: 1, cards: [] })
     const r = grade({ problem: p2, code: composeSolution(p2), circuit: buildModelCircuit(p2), hintsUsed: 2 })
     expect(r.raw).toBe(100)
     expect(r.score).toBe(100 - 2 * p2.hintPenalty)

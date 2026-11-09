@@ -92,12 +92,12 @@ export default function PartGraphic({ kind, state = {}, legPos }: { kind: Circui
           <circle cx={6} cy={-32} r={4} fill="#3b82f6" stroke="#bfdbfe"><title>감도 조절 나사</title></circle>
         </Module>
       )
-    case 'ir':
+    case 'pot':
       return (
-        <Module kind={kind} w={56} label="IR" state={state}>
-          <circle cx={8} cy={-32} r={6} fill="#e5e7eb" />
-          <circle cx={32} cy={-32} r={6} fill="#111827" />
-          <circle cx={20} cy={-22} r={3.5} fill="#3b82f6" />
+        <Module kind={kind} w={50} label="가변저항" state={state}>
+          <circle cx={20} cy={-30} r={11} fill="#e5e7eb" stroke="#6b7280" strokeWidth={1.2} />
+          <circle cx={20} cy={-30} r={7} fill="#9ca3af" stroke="#4b5563" strokeWidth={0.8} />
+          <line x1={20} y1={-30} x2={26} y2={-35} stroke="#1f2937" strokeWidth={2} strokeLinecap="round" />
         </Module>
       )
     case 'cds':

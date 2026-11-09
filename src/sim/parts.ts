@@ -4,7 +4,7 @@ import { isHole, holeId, holeNode, pointNode } from './geometry'
 // ─── 부품 정의 ───────────────────────────────────────────────
 
 export type CircuitPartKind =
-  | 'pir' | 'dht11' | 'ultrasonic' | 'line' | 'ir' | 'cds' | 'pushbutton'
+  | 'pir' | 'dht11' | 'ultrasonic' | 'line' | 'pot' | 'cds' | 'pushbutton'
   | 'led-red' | 'led-green' | 'led-blue' | 'res-220' | 'res-10k'
 
 export interface LegDef { id: string; label: string; dx: number; dy: number }
@@ -30,7 +30,7 @@ export const PART_DEFS: Record<CircuitPartKind, PartDef> = {
   dht11: { kind: 'dht11', label: 'DHT11', sensor: 'dht11', module: true, legs: row([['vcc', 'VCC'], ['data', 'DATA'], ['gnd', 'GND']]) },
   ultrasonic: { kind: 'ultrasonic', label: '초음파 HC-SR04', sensor: 'ultrasonic', module: true, legs: row([['vcc', 'VCC'], ['trig', 'Trig'], ['echo', 'Echo'], ['gnd', 'GND']]) },
   line: { kind: 'line', label: '라인센서', sensor: 'line', module: true, legs: row([['vcc', 'VCC'], ['gnd', 'GND'], ['d0', 'D0'], ['a0', 'A0']]) },
-  ir: { kind: 'ir', label: 'IR 장애물', sensor: 'ir', module: true, legs: row([['vcc', 'VCC'], ['gnd', 'GND'], ['out', 'OUT']]) },
+  pot: { kind: 'pot', label: '가변저항', sensor: 'pot', module: true, legs: row([['vcc', 'VCC'], ['out', 'OUT'], ['gnd', 'GND']]) },
   cds: { kind: 'cds', label: '조도(CDS)', sensor: 'cds', module: true, legs: row([['vcc', 'VCC'], ['ao', 'AO'], ['gnd', 'GND']]) },
   pushbutton: {
     kind: 'pushbutton', label: '푸시버튼', sensor: 'button',
@@ -53,7 +53,7 @@ export const isLed = (k: CircuitPartKind) => k.startsWith('led-')
 export const isResistor = (k: CircuitPartKind) => k.startsWith('res-')
 
 export const SENSOR_PART: Record<SensorId, CircuitPartKind> = {
-  pir: 'pir', dht11: 'dht11', ultrasonic: 'ultrasonic', line: 'line', ir: 'ir', cds: 'cds', button: 'pushbutton',
+  pir: 'pir', dht11: 'dht11', ultrasonic: 'ultrasonic', line: 'line', pot: 'pot', cds: 'cds', button: 'pushbutton',
 }
 
 // ─── 회로 ────────────────────────────────────────────────────

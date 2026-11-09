@@ -149,7 +149,6 @@ export interface ProblemOptions {
   seed: number
   /** 실전 모드 타이머 (분). 없으면 난이도 기본값, 연습 모드는 null */
   timerMinutes?: number | null
-  irActiveLow?: boolean
   /** 카드 직접 지정 (테스트/재도전용). 없으면 랜덤 */
   cards?: AppliedCard[]
 }
@@ -201,7 +200,6 @@ export function generateProblem(o: ProblemOptions): Problem {
     pins,
     leds,
     cards,
-    irActiveLow: o.irActiveLow ?? true,
     buttonMode: 'pulldown',
     requireSerial: diff.requireSerial,
     showWiringGuide: diff.showWiringGuide && !isExam,
@@ -264,9 +262,6 @@ function buildStatement(p: Problem): string[] {
     lines.push(`${josa(names[0], '와과')} ${names[1]}의 값을 모두 읽어 ${ledText}를 제어하세요. 조건은 자유롭게 정해도 되지만, 두 센서 값이 모두 LED 에 영향을 줘야 합니다.`)
   }
   for (const id of p.sensors) lines.push(`• ${getSensor(id).name}: ${sensorPinText(p, id)}`)
-  if (p.sensors.includes('ir')) {
-    lines.push(`• 이 문제의 IR 센서는 장애물 감지 시 ${p.irActiveLow ? 'LOW' : 'HIGH'} 를 출력합니다.`)
-  }
   if (p.requireSerial && p.sensors.length > 1) {
     lines.push('• 두 센서 값을 시리얼 모니터에 함께 출력하세요.')
   }
